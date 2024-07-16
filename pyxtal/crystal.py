@@ -64,7 +64,7 @@ class random_crystal:
         random_state: int | None | Generator = None,
     ):
         # Initialize
-        self.rng = np.random.default_rng(random_state)
+        self.random_state = np.random.default_rng(random_state)
         if species is None:
             species = ["C"]
 
@@ -199,7 +199,7 @@ class random_crystal:
         vmin_array = np.array([v[0] for v in self.elemental_volumes])
         vmax_array = np.array([v[1] for v in self.elemental_volumes])
 
-        random_volumes = self.rng.uniform(vmin_array, vmax_array, size=len(self.numIons))
+        random_volumes = self.random_state.uniform(vmin_array, vmax_array, size=len(self.numIons))
         volume = np.sum(np.array(self.numIons) * random_volumes)
 
         self.volume = self.factor * volume
@@ -239,7 +239,7 @@ class random_crystal:
                         unique_axis=unique_axis,
                         thickness=self.thickness,
                         area=self.area,
-                        random_state=self.rng,
+                        random_state=self.random_state.spawn(1)[0],
                     )
                     good_lattice = True
                     break

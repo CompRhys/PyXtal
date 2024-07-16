@@ -2364,10 +2364,7 @@ class Wyckoff_position:
         Returns:
             free xyz array
         """
-        if isinstance(random_state, Generator):
-            random_state = random_state.spawn(1)[0]
-        else:
-            random_state = np.random.default_rng(random_state)
+        random_state = np.random.default_rng(random_state)
 
         # print(self.apply_ops(pos)[0])
         res = self.apply_ops(pos)[0]
@@ -2882,10 +2879,7 @@ def choose_wyckoff(G, number=None, site=None, dim=3, random_state: int | None | 
     Returns:
         Wyckoff position. If no position is found, returns False
     """
-    if isinstance(random_state, Generator):
-        random_state = random_state.spawn(1)[0]
-    else:
-        random_state = np.random.default_rng(random_state)
+    random_state = np.random.default_rng(random_state)
 
     if site is not None:
         number = G.number
@@ -2940,10 +2934,7 @@ def choose_wyckoff_mol(
     Returns:
         Wyckoff position if found, False otherwise.
     """
-    if isinstance(random_state, Generator):
-        random_state = random_state.spawn(1)[0]
-    else:
-        random_state = np.random.default_rng(random_state)
+    random_state = np.random.default_rng(random_state)
 
     if site is not None:
         return Wyckoff_position.from_group_and_letter(G.number, site, dim, hn=G.hall_number)

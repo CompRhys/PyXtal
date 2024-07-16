@@ -11,7 +11,7 @@ from pymatgen.core import Molecule
 from pyxtal.io import search_molecules_in_crystal
 
 # PyXtal imports
-from pyxtal.molecular_crystal import molecular_crystal as mol_xtal
+from pyxtal.molecular_crystal import molecular_crystal
 from pyxtal.molecule import Orientation, compare_mol_connectivity, pyxtal_molecule
 from pyxtal.wyckoff_site import mol_site
 
@@ -32,13 +32,13 @@ def block_crystal(
     conventional,
     tm,
     seed,
-    random_state,
     use_hall,
+    random_state=None,
 ):
     # If block is None, directly generate mol. xtal.
     # Otherwise, generate crystal from building block
     if block is None:
-        return mol_xtal(
+        return molecular_crystal(
             dim,
             group,
             molecules,
@@ -52,14 +52,14 @@ def block_crystal(
             conventional=conventional,
             tm=tm,
             seed=seed,
-            random_state=random_state,
             use_hall=use_hall,
+            random_state=random_state,
         )
 
     else:
-        p_mol = pyxtal_molecule(block)
+        p_mol = pyxtal_molecule(block, random_state=random_state.spawn(1)[0])
         block_mols = search_molecules_in_crystal(p_mol.mol, tol=0.2, once=False)
-        xtal_mols = [pyxtal_molecule(m, fix=True) for m in molecules]
+        xtal_mols = [pyxtal_molecule(m, fix=True, random_state=random_state.spawn(1)[0]) for m in molecules]
 
         orders = []
         for m1 in xtal_mols:
@@ -94,7 +94,7 @@ def block_crystal(
         # print(mol.to('xyz')); import sys; sys.exit()
 
         for i in range(10):
-            struc = mol_xtal(
+            struc = molecular_crystal(
                 dim,
                 group,
                 [mol],
@@ -107,8 +107,8 @@ def block_crystal(
                 sites=sites,
                 conventional=conventional,
                 tm=tm,
-                random_state=random_state,
                 use_hall=use_hall,
+                random_state=random_state.spawn(1)[0],
             )
 
             if struc.valid:
@@ -122,7 +122,7 @@ def block_crystal(
         xyz, _ = b_site._get_coords_and_species(absolute=True, first=True)
 
         # Create mol sites
-        ori = Orientation(np.eye(3))
+        ori = Orientation(np.eye(3), random_state=random_state.spawn(1)[0])
         mol_sites = []
 
         count = 0

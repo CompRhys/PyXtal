@@ -29,26 +29,25 @@ OPTIMIZATION_LEVELS: list[int] = [0, 2]  # Add 3 if needed
 CALCULATION_DIR: str = "Calc"
 DB_FILENAME: str = "C-VASP.db"
 
-rng = np.random.default_rng()
 
-
-def generate_random_crystal() -> pyxtal:
+def generate_random_crystal(random_state=None) -> pyxtal:
     """Generate a random crystal structure."""
+    random_state = np.random.default_rng(random_state)
     while True:
-        sg = rng.integers(2, 230)
+        sg = random_state.integers(2, 230)
         species = []
         num_ions = []
         for ele, count in ELEMENTS.items():
             species.append(ele)
             if len(count) == 2:
-                num = rng.integers(count[0], count[1])
+                num = random_state.integers(count[0], count[1])
                 num_ions.append(num)
             else:
                 num_ions.append(count[0])
 
         crystal = pyxtal()
         try:
-            crystal.from_random(3, sg, species, num_ions, force_pass=True)
+            crystal.from_random(3, sg, species, num_ions, force_pass=True, random_state=random_state)
         except pyxtal.msg.Comp_CompatibilityError:
             continue
 

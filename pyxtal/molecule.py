@@ -11,7 +11,6 @@ from operator import itemgetter
 import networkx as nx
 import numpy as np
 from monty.serialization import loadfn
-from numpy.random import Generator
 from pymatgen.core.structure import Molecule
 from pymatgen.symmetry.analyzer import PointGroupAnalyzer, generate_full_symmops
 from scipy.spatial.distance import cdist
@@ -246,10 +245,7 @@ class pyxtal_molecule:
             seed = 0xF00D
         self.seed = seed
 
-        if isinstance(random_state, Generator):
-            self.random_state = random_state.spawn(1)[0]
-        else:
-            self.random_state = np.random.default_rng(random_state)
+        self.random_state = np.random.default_rng(random_state)
 
         # Parse molecules: either file or molecule name
         if isinstance(mol, str):
@@ -1297,7 +1293,9 @@ class pyxtal_molecule:
         """
         # For single atoms, there are no constraints
         if len(self.mol) == 1 or wp.index == 0:
-            return [Orientation([[1, 0, 0], [0, 1, 0], [0, 0, 1]], degrees=2)]
+            return [
+                Orientation([[1, 0, 0], [0, 1, 0], [0, 0, 1]], degrees=2, random_state=self.random_state.spawn(1)[0])
+            ]
         # C1 molecule cannot take specical position
         elif wp.index > 1 and self.pga.sch_symbol == "C1":
             return []
@@ -1425,7 +1423,7 @@ class pyxtal_molecule:
             T = rotate_vector(v1, v2)
             # If there is only one constraint
             if c1[1] == []:
-                o = Orientation(T, degrees=1, axis=constraint1.axis)
+                o = Orientation(T, degrees=1, axis=constraint1.axis, random_state=self.random_state.spawn(1)[0])
                 orientations.append(o)
             else:
                 # Loop over second molecular constraints
@@ -1442,12 +1440,12 @@ class pyxtal_molecule:
                         a = angle(np.dot(T2, opa.axis), constraint2.axis)
                         if not np.isclose(a, 0, rtol=rtol):
                             T2 = np.dot(np.linalg.inv(R), T)
-                        o = Orientation(T2, degrees=0)
+                        o = Orientation(T2, degrees=0, random_state=self.random_state.spawn(1)[0])
                         orientations.append(o)
 
         # Ensure the identity orientation is checked if no constraints are found
         if constraints_m == []:
-            o = Orientation(np.identity(3), degrees=2)
+            o = Orientation(np.identity(3), degrees=2, random_state=self.random_state.spawn(1)[0])
             orientations.append(o)
         # Remove redundancy from orientations
         list_i = list(range(len(orientations)))
@@ -1543,10 +1541,7 @@ class Orientation:
         self.matrix = np.array(matrix)
         self.degrees = degrees
 
-        if isinstance(random_state, Generator):
-            self.random_state = random_state.spawn(1)[0]
-        else:
-            self.random_state = np.random.default_rng(random_state)
+        self.random_state = np.random.default_rng(random_state)
 
         if degrees == 1:
             if axis is None:
@@ -1646,7 +1641,7 @@ class Orientation:
             axis = None
 
         matrix = matrix.dot(self.matrix)
-        return Orientation(matrix, self.degrees, axis)
+        return Orientation(matrix, self.degrees, axis, random_state=self.random_state.spawn(1)[0])
 
     def get_matrix(self, angle="random"):
         """

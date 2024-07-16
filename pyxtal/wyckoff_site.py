@@ -38,7 +38,8 @@ class atom_site:
         search (bool): whether or not search generator for special WP
     """
 
-    def __init__(self, wp=None, coordinate=None, specie=1, search=False):
+    def __init__(self, wp=None, coordinate=None, specie=1, search=False, random_state=None):
+        self.random_state = np.random.default_rng(random_state)
         self.position = np.array(coordinate)
         self.position -= np.floor(self.position)
         self.specie = Element(specie).short_name
@@ -338,7 +339,7 @@ class atom_site:
             dicts["rotor"] = molecule.get_torsion_angles()
             dicts["reflect"] = reflect
 
-        return mol_site.from_1D_dicts(dicts)
+        return mol_site.from_1D_dicts(dicts, random_state=self.random_state)
 
 
 class mol_site:
@@ -357,7 +358,9 @@ class mol_site:
         stype: integer number to specify the type of molecule
     """
 
-    def __init__(self, mol, position, orientation, wp, lattice=None, stype=0):
+    def __init__(self, mol, position, orientation, wp, lattice=None, stype=0, random_state=None):
+        self.random_state = np.random.default_rng(random_state)
+
         # describe the molecule
         self.molecule = mol
         self.wp = wp
@@ -486,8 +489,10 @@ class mol_site:
         return dict0
 
     @classmethod
-    def from_1D_dicts(cls, dicts):
+    def from_1D_dicts(cls, dicts, random_state=None):
         from pyxtal.molecule import Orientation, pyxtal_molecule
+
+        random_state = np.random.default_rng(random_state)
 
         mol = pyxtal_molecule(mol=dicts["smile"] + ".smi", fix=True)
         if len(mol.mol) > 1:
@@ -508,9 +513,9 @@ class mol_site:
 
             mol.reset_positions(xyz)
             matrix = R.from_euler("zxy", dicts["orientation"], degrees=True).as_matrix()
-            orientation = Orientation(matrix)
+            orientation = Orientation(matrix, random_state=random_state.spawn(1)[0])
         else:
-            orientation = Orientation(np.eye(3))
+            orientation = Orientation(np.eye(3), random_state=random_state.spawn(1)[0])
 
         g = dicts["hn"]
         index = int(dicts["index"])
@@ -520,7 +525,7 @@ class mol_site:
         position = dicts["center"]  # np.dot(dicts["center"], lattice.inv_matrix)
         position, wp, _ = wp.merge(position, lattice.matrix, 0.01)
 
-        return cls(mol, position, orientation, wp, lattice)
+        return cls(mol, position, orientation, wp, lattice, random_state=random_state.spawn(1)[0])
 
     def show(self, id=None, **kwargs):
         """
@@ -753,7 +758,7 @@ class mol_site:
             position = center.dot(self.lattice.inv_matrix)
             self.position = position - np.floor(position)
             if update_mol:
-                self.orientation = Orientation(np.eye(3))
+                self.orientation = Orientation(np.eye(3), random_state=self.random_state.spawn(1)[0])
                 self.molecule.mol = mol
             else:
                 m1 = pybel.readstring("xyz", self.molecule.mol.to("xyz"))

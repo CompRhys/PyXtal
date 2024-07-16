@@ -7,6 +7,8 @@ cell. For each layer group, the number of atoms used to generate the
 crystal is equal to the multiplicity of the general position.
 """
 
+from optparse import OptionParser
+
 if __name__ == "__main__":
     # -------------------------------- Options -------------------------
     from time import time
@@ -74,17 +76,15 @@ if __name__ == "__main__":
     verbosity = options.verbosity
     attempts = options.attempts
 
-    numions = []
-    if atoms.find(",") > 0:
-        strings = atoms.split(",")
-        system = []
-        for atom in strings:
-            system.append(atom)
-        for x in number.split(","):
-            numions.append(int(x))
+    if (atoms.find(",") > 0) and (number.find(",") > 0):
+        system = atoms.split(",")
+        numions = [int(n) for n in number.split(",")]
     else:
         system = [atoms]
         numions = [int(number)]
+
+    if len(system) != len(numions):
+        raise ValueError("The number of elements must equal the number of numbers of ions")
 
     # Layergroup numbers to test
     numrange = list(range(1, 81))

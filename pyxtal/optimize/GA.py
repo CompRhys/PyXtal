@@ -13,7 +13,6 @@ import numpy as np
 
 # import threading
 import psutil
-from numpy.random import Generator
 
 from pyxtal.optimize.base import GlobalOptimize
 from pyxtal.optimize.common import optimizer_par, optimizer_single
@@ -88,10 +87,7 @@ class GA(GlobalOptimize):
         verbose: bool = False,
         random_state: int | None = None,
     ):
-        if isinstance(random_state, Generator):
-            self.random_state = random_state.spawn(1)[0]
-        else:
-            self.random_state = np.random.default_rng(random_state)
+        self.random_state = np.random.default_rng(random_state)
 
         # GA parameters:
         if fracs is None:

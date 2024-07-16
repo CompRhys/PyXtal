@@ -5,7 +5,6 @@ Module to handle the split of Wyckoff positions
 from copy import deepcopy
 
 import numpy as np
-from numpy.random import Generator
 from pymatgen.core.operations import SymmOp
 
 import pyxtal.symmetry as sym
@@ -27,10 +26,7 @@ class wyckoff_split:
     """
 
     def __init__(self, G=197, idx=None, wp1=None, group_type="t", elements=None, random_state=None):
-        if isinstance(random_state, Generator):
-            self.random_state = random_state.spawn(1)[0]
-        else:
-            self.random_state = np.random.default_rng(random_state)
+        self.random_state = np.random.default_rng(random_state)
 
         if wp1 is None:
             wp1 = [0, 1]
@@ -528,10 +524,10 @@ def in_lists(mat1, mat2, eps=1e-2, PBC=True):
 
 
 if __name__ == "__main__":
-    # sp = wyckoff_split(G=14, idx=1, wp1=['2c', '4e'], group_type='t')
+    # sp = wyckoff_split(G=14, idx=1, wp1=['2c', '4e'], group_type='t', random_state=self.random_state.spawn(1)[0])
     # print(sp)
     for idx in range(4):
-        # sp = wyckoff_split(G=210, idx=idx, wp1=['8b'], group_type='k')
-        sp = wyckoff_split(G=224, idx=idx, wp1=["24j"], group_type="k")
+        # sp = wyckoff_split(G=210, idx=idx, wp1=['8b'], group_type='k', random_state=self.random_state.spawn(1)[0])
+        sp = wyckoff_split(G=224, idx=idx, wp1=["24j"], group_type="k", random_state=self.random_state.spawn(1)[0])
         # print(sp)
         print(sp.error)

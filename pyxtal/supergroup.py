@@ -9,7 +9,6 @@ from copy import deepcopy
 
 import numpy as np
 import pymatgen.analysis.structure_matcher as sm
-from numpy.random import Generator
 from scipy.optimize import minimize
 
 import pyxtal.symmetry as sym
@@ -342,10 +341,7 @@ class supergroup:
         group_type = "k" if self.G.point_group == struc.group.point_group else "t"
         self.group_type = group_type
 
-        if isinstance(random_state, Generator):
-            self.random_state = random_state.spawn(1)[0]
-        else:
-            self.random_state = np.random.default_rng(random_state)
+        self.random_state = np.random.default_rng(random_state)
 
         # list of all alternative wycsets
         strucs = struc.get_alternatives()
@@ -448,7 +444,9 @@ class supergroup:
         elements = [elements[id] for id in ids]
         sites_G = [sites_G[id] for id in ids]
 
-        splitter = wyckoff_split(self.G, split_id, sites_G, self.group_type, elements)
+        splitter = wyckoff_split(
+            self.G, split_id, sites_G, self.group_type, elements, random_state=self.random_state.spawn(1)[0]
+        )
         mappings = find_mapping(self.struc.atom_sites, splitter)
 
         dists = []

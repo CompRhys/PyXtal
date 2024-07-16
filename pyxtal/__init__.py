@@ -273,14 +273,13 @@ class pyxtal:
         block=None,
         num_block=None,
         seed=None,
-        random_state=None,
         tm=None,
         use_hall=False,
+        random_state=None,
     ):
         """
         The main function to generate random crystals.
-        It calls `block_crysstal` or `random_crystal` internally.
-
+        It calls `block_crystal` or `random_crystal` internally.
 
         Args:
             dim (int): dimenion (0, 1, 2, 3)
@@ -300,6 +299,9 @@ class pyxtal:
                 to define the distances
 
         """
+        if random_state is None:
+            random_state = self.random_state
+
         prototype = "molecular" if self.molecular else "atomic"
 
         if tm is None:
@@ -327,8 +329,8 @@ class pyxtal:
                     conventional=conventional,
                     tm=tm,
                     seed=seed,
-                    random_state=random_state,
                     use_hall=use_hall,
+                    random_state=random_state,
                 )
             else:
                 struc = random_crystal(
@@ -411,7 +413,9 @@ class pyxtal:
                 else:
                     pmols.append(pyxtal_molecule(mol, fix=True))
             # QZ: the default will not work for molecular H2, which is rare!
-            struc = structure_from_ext(seed, pmols, ignore_HH=ignore_HH, add_H=add_H, hn=hn)
+            struc = structure_from_ext(
+                seed, pmols, ignore_HH=ignore_HH, add_H=add_H, hn=hn, random_state=self.random_state
+            )
             self.mol_sites = struc.make_mol_sites()
             self.group = Group(struc.wyc.number)
             self.lattice = struc.lattice
@@ -487,7 +491,7 @@ class pyxtal:
                 self.group = Group(hn, use_hall=True)
             # print(self.group[0]); import sys; sys.exit()
             matrix, ltype = sym_struc.lattice.matrix, self.group.lattice_type
-            self.lattice = Lattice.from_matrix(matrix, ltype=ltype)
+            self.lattice = Lattice.from_matrix(matrix, ltype=ltype, random_state=self.random_state.spawn(1)[0])
             atom_sites = []
             for i, site in enumerate(sym_struc.equivalent_sites):
                 pos = site[0].frac_coords
@@ -727,7 +731,9 @@ class pyxtal:
             gtype = (t_types + k_types)[idx]
             if gtype == "k":
                 idx -= len(t_types)
-            splitter = wyckoff_split(G=self.group, wp1=sites, idx=idx, group_type=gtype)
+            splitter = wyckoff_split(
+                G=self.group, wp1=sites, idx=idx, group_type=gtype, random_state=self.random_state.spawn(1)[0]
+            )
 
             if not splitter.error:
                 if perms is None:
@@ -797,7 +803,9 @@ class pyxtal:
             _sites = struc.mol_sites if self.molecular else struc.atom_sites
             sites = [site.wp.index for site in _sites]
             # print(G.number, id, g_type, sites)
-            splitter = wyckoff_split(G, wp1=sites, idx=id, group_type=g_type)
+            splitter = wyckoff_split(
+                G, wp1=sites, idx=id, group_type=g_type, random_state=self.random_state.spawn(1)[0]
+            )
             struc = struc._subgroup_by_splitter(splitter, eps=eps, mut_lat=mut_lat)
             if struc is None:
                 return None
@@ -845,7 +853,9 @@ class pyxtal:
             if gtype == "k":
                 id -= len(t_types)
             # print(self.group.number, sites, id, gtype, idx)
-            splitter = wyckoff_split(G=self.group.number, wp1=sites, idx=id, group_type=gtype)
+            splitter = wyckoff_split(
+                G=self.group.number, wp1=sites, idx=id, group_type=gtype, random_state=self.random_state.spawn(1)[0]
+            )
             if not splitter.error:
                 if perms is not None:
                     if len(splitter.H_orbits) == 1:
@@ -1000,12 +1010,16 @@ class pyxtal:
         new_struc = self.copy()
         new_struc.group = splitter.H
         try:
-            lattice = Lattice.from_matrix(lat1, ltype=new_struc.group.lattice_type)
+            lattice = Lattice.from_matrix(
+                lat1, ltype=new_struc.group.lattice_type, random_state=self.random_state.spawn(1)[0]
+            )
         except:
             self.optimize_lattice()
             lat1 = np.dot(splitter.R[:3, :3].T, self.lattice.matrix)
             try:
-                lattice = Lattice.from_matrix(lat1, ltype=new_struc.group.lattice_type)
+                lattice = Lattice.from_matrix(
+                    lat1, ltype=new_struc.group.lattice_type, random_state=self.random_state.spawn(1)[0]
+                )
             except:
                 # print('problem with splitter, save it to bug.cif')
                 # print(splitter)
@@ -1416,7 +1430,7 @@ class pyxtal:
             pos_frac = pos_abs.dot(lattice.inv_matrix)
             pos_frac -= np.floor(pos_frac)
             wp = site.wp.copy()
-            wp.transform_from_matrix(trans, False, update=False)
+            wp.transform_from_matrix(trans, False, update=False, random_state=self.random_state.spawn(1)[0])
 
             if self.molecular:
                 # Obtain the transformed xyz
@@ -1499,7 +1513,9 @@ class pyxtal:
         Load the structure from a dictionary
         """
         self.group = Group(dict0["group"], dict0["dim"])
-        self.lattice = Lattice.from_matrix(dict0["lattice"], ltype=self.group.lattice_type)
+        self.lattice = Lattice.from_matrix(
+            dict0["lattice"], ltype=self.group.lattice_type, random_state=self.random_state.spawn(1)[0]
+        )
         self.molecular = dict0["molecular"]
         self.factor = dict0["factor"]
         self.source = dict0["source"]
@@ -1551,7 +1567,7 @@ class pyxtal:
             if type(lattice) == np.ndarray:
                 ltype = self.group.lattice_type
                 if len(lattice) == 3:
-                    lattice = Lattice.from_matrix(lattice, ltype=ltype)
+                    lattice = Lattice.from_matrix(lattice, ltype=ltype, random_state=self.random_state.spawn(1)[0])
                 elif len(lattice) == 6:  # cell para
                     [a, b, c, alpha, beta, gamma] = lattice
                     lattice = Lattice.from_para(a, b, c, alpha, beta, gamma, ltype=ltype)
@@ -1718,7 +1734,9 @@ class pyxtal:
         # transform lattice
         R = op.affine_matrix[:3, :3]  # rotation
         cell = self.lattice.matrix
-        new_lat = Lattice.from_matrix(np.dot(R, cell), ltype=self.lattice.ltype)
+        new_lat = Lattice.from_matrix(
+            np.dot(R, cell), ltype=self.lattice.ltype, random_state=self.random_state.spawn(1)[0]
+        )
         # matrix = new_lat.matrix
         if ref_lat is not None:
             d_tol1, f_tol1, a_tol1, switch = new_lat.get_diff(ref_lat)
@@ -1726,7 +1744,7 @@ class pyxtal:
                 # print('bad setting', new_lat); print(ref_lat)
                 return None
 
-        new_struc.lattice = new_lat  # Lattice.from_matrix(matrix, ltype=self.group.lattice_type)
+        new_struc.lattice = new_lat
 
         for i, site in enumerate(new_struc.atom_sites):
             id = len(self.group) - site.wp.index - 1
@@ -1776,7 +1794,7 @@ class pyxtal:
             pos = op.operate(site.position)
             pos1 = wp.search_generator(pos, self.group[0])
             if pos1 is not None:
-                new_struc.atom_sites[i] = atom_site(wp, pos1, site.specie)
+                new_struc.atom_sites[i] = atom_site(wp, pos1, site.specie, random_state=self.random_state.spawn(1)[0])
             else:
                 print(pos)
                 print(wp)
@@ -1788,7 +1806,9 @@ class pyxtal:
         # transform lattice
         R = op.affine_matrix[:3, :3]  # rotation
         matrix = np.dot(R, self.lattice.matrix)
-        new_struc.lattice = Lattice.from_matrix(matrix, ltype=self.group.lattice_type)
+        new_struc.lattice = Lattice.from_matrix(
+            matrix, ltype=self.group.lattice_type, random_state=self.random_state.spawn(1)[0]
+        )
 
         return new_struc
 
@@ -2789,7 +2809,7 @@ class pyxtal:
         # for id in idx:
         #    gtype = (t_types + k_types)[id]
         #    if gtype == 'k': id -= len(t_types)
-        #    splitter = wyckoff_split(G=self.group, wp1=sites, idx=id, gtype, elements)
+        #    splitter = wyckoff_split(G=self.group, wp1=sites, idx=id, gtype, elements, random_state=self.random_state.spawn(1)[0])
         #    # QZ: check if there is a redundancy in error and valid_split
         #    if not splitter.error and splitter.valid_split:
         #        for key in dicts.keys():

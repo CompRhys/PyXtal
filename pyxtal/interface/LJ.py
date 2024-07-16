@@ -1,10 +1,13 @@
 import logging
+from copy import deepcopy
 from time import time
 
 import numpy as np
 from pymatgen.core.lattice import Lattice
+from spglib import get_symmetry_dataset
 
-from pyxtal.operations import *
+from pyxtal.crystal import random_crystal
+from pyxtal.operations import apply_ops, apply_ops_diagonal
 
 logging.basicConfig(filename="test.log", level=logging.DEBUG)
 eV2GPa = 160.217
@@ -71,7 +74,6 @@ class LJ:
 
         energy = 0.5 * energy
         enthalpy = energy + press * volume * GPa2eV
-        force = force
         stress = -0.5 * stress / volume * eV2GPa
 
         return energy, enthalpy, force, stress
@@ -204,7 +206,8 @@ class FIRE:
             self.nsteps += 1
 
         logging.info(
-            f"Finish at Step {self.nsteps:4d} Enthalpy: {self.enthalpy:12.4f} Fmax: {self.fmax:12.4f} Time: {time() - self.time0:6.2f} seconds"
+            f"Finish at Step {self.nsteps:4d} Enthalpy: {self.enthalpy:12.4f} "
+            f"Fmax: {self.fmax:12.4f} Time: {time() - self.time0:6.2f} seconds"
         )
 
     def check_convergence(self):
@@ -299,24 +302,21 @@ class FIRE:
             for index in indices:
                 total += stress[index]
             value = np.sqrt(total)
-            for index in inices:
+            for index in indices:
                 m2[index] = value
         elif len(indices) == 3:
             total = 0
             for index in indices:
                 total += stress[index]
             value = np.cbrt(total)
-            for index in inices:
+            for index in indices:
                 m2[index] = value
         return m2
 
 
-from spglib import get_symmetry_dataset
-
-from pyxtal.crystal import random_crystal
-
+random_state = np.random.default_rng()
 for _i in range(10):
-    crystal = random_crystal(11, ["C"], [4], 1.0)
+    crystal = random_crystal(11, ["C"], [4], 1.0, random_state=random_state)
     if crystal.valid:
         crystal1 = deepcopy(crystal)
         test = LJ(epsilon=0.01, sigma=3.40, rcut=8.0)
@@ -343,6 +343,9 @@ for _i in range(10):
         # dyn1 = FIRE(crystal, test, f_tol=1e-5, dt=0.2, maxmove=0.2)
         # struc = (dyn1.struc.lattice_matrix, dyn1.struc.frac_coords, [6]*4)
         # sg =  get_symmetry_dataset(struc, symprec=0.02)['number']
-        # print('After relaxation without symm Space group: {:4d}  Energy: {:12.4}  Enthalpy: {:12.4}'.format(sg, eng, enth))
+        # print(
+        #     f"After relaxation without symm Space group: {sg:4d}  Energy: {eng:12.4} "
+        #     f"Enthalpy: {enth:12.4}"
+        # )
         # right now, it seems structures goes to either HCP of FCC after relaxation, which is expected for 3D LJ system
         # need to compare with other code to see if the energy is correct

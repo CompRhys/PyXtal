@@ -70,10 +70,7 @@ class Lattice:
         self.kwargs = {}
         self.random = True
 
-        if isinstance(random_state, Generator):
-            self.random_state = random_state.spawn(1)[0]
-        else:
-            self.random_state = np.random.default_rng(random_state)
+        self.random_state = np.random.default_rng(random_state)
 
         # Set optional values
         self.allow_volume_reset = True
@@ -197,7 +194,7 @@ class Lattice:
 
     def scale(self, factor=1.1):
         matrix = self.matrix
-        return Lattice.from_matrix(matrix * factor, ltype=self.ltype)
+        return Lattice.from_matrix(matrix * factor, ltype=self.ltype, random_state=self.random_state.spawn(1)[0])
 
     def get_permutation_matrices(self):
         """
@@ -293,7 +290,7 @@ class Lattice:
                 tmp = np.dot(tran2, lat0.matrix)
                 try:
                     # print("Start", np.linalg.det(tmp))
-                    lat2 = Lattice.from_matrix(tmp, ltype=self.ltype)
+                    lat2 = Lattice.from_matrix(tmp, ltype=self.ltype, random_state=self.random_state.spawn(1)[0])
                     # print("End", np.linalg.det(lat2.matrix))
                     d_tol1, f_tol1, a_tol1, switch = lat2.get_diff(lat_ref)
                     # print(d_tol1, f_tol1, a_tol1, switch)
@@ -351,7 +348,7 @@ class Lattice:
                 tmp = np.dot(tran2, lat0.matrix)
                 try:
                     # print(i, j, self.ltype)
-                    lat2 = Lattice.from_matrix(tmp, ltype=self.ltype)
+                    lat2 = Lattice.from_matrix(tmp, ltype=self.ltype, random_state=self.random_state.spawn(1)[0])
                     d_tol1, f_tol1, a_tol1, switch = lat2.get_diff(lat_ref)
                     # print(d_tol1, f_tol1, a_tol1, switch)
                 except:
@@ -394,7 +391,9 @@ class Lattice:
             for tran in trans:
                 cell_new = np.dot(tran, self.matrix)
                 try:
-                    lat_new = Lattice.from_matrix(cell_new, ltype=self.ltype)
+                    lat_new = Lattice.from_matrix(
+                        cell_new, ltype=self.ltype, random_state=self.random_state.spawn(1)[0]
+                    )
                     diffs.append(lat_new.get_worst_angle())
                 except:
                     diffs.append(100)
@@ -403,7 +402,9 @@ class Lattice:
                 opt = True
                 tran = trans[id]
                 cell = np.dot(tran, self.matrix)
-                lat = Lattice.from_matrix(cell, ltype=self.ltype, reset=reset)
+                lat = Lattice.from_matrix(
+                    cell, ltype=self.ltype, reset=reset, random_state=self.random_state.spawn(1)[0]
+                )
                 return lat, tran, opt
         return self, np.eye(3), opt
 
@@ -470,7 +471,7 @@ class Lattice:
             trans_mat = np.array(trans_mat)
 
         cell = np.dot(trans_mat, self.matrix)
-        return Lattice.from_matrix(cell, ltype=self.ltype, reset=reset)
+        return Lattice.from_matrix(cell, ltype=self.ltype, reset=reset, random_state=self.random_state.spawn(1)[0])
 
     def transform_multi(self, trans, reset=True):
         """
@@ -790,7 +791,7 @@ class Lattice:
 
     @classmethod
     def from_para(
-        self,
+        cls,
         a,
         b,
         c,
@@ -859,11 +860,11 @@ class Lattice:
             raise ValueError(msg) from err
 
         if force_symmetry:
-            return Lattice.from_matrix(cell_matrix, ltype=ltype)
+            return cls.from_matrix(cell_matrix, ltype=ltype, **kwargs)
         else:
             volume = np.linalg.det(cell_matrix)
             # Initialize a Lattice instance
-            l = Lattice(ltype, volume, PBC=PBC, **kwargs)
+            l = cls(ltype, volume, PBC=PBC, **kwargs)
             l.a, l.b, l.c = factor * a, factor * b, factor * c
             l.alpha, l.beta, l.gamma = alpha * rad, beta * rad, gamma * rad
             l.matrix = cell_matrix
@@ -876,7 +877,7 @@ class Lattice:
 
     @classmethod
     def from_matrix(
-        self,
+        cls,
         matrix,
         reset=True,
         shape="upper",
@@ -909,6 +910,7 @@ class Lattice:
                 'min_l': the smallest allowed cell vector.
                 'mid_l': the second smallest allowed cell vector.
                 'max_l': the third smallest allowed cell vector.
+                'random_state': random seed for random generation in Lattice
 
         Returns:
             a Lattice object with the specified parameters
@@ -946,7 +948,7 @@ class Lattice:
 
         # Initialize a Lattice instance
         volume = np.linalg.det(m)
-        l = Lattice(ltype, volume, m, PBC=PBC, **kwargs)
+        l = cls(ltype, volume, m, PBC=PBC, **kwargs)
         l.a, l.b, l.c = a, b, c
         l.alpha, l.beta, l.gamma = alpha, beta, gamma
         l.matrix = m
@@ -1000,7 +1002,7 @@ class Lattice:
 
         return True
 
-    def check_mismatch(self, trans, l_type, tol=1.0, a_tol=10):
+    def check_mismatch(self, trans, l_type, tol=1.0, a_tol=10, **kwargs):
         """
         check if the lattice mismatch is big after a transformation
         This is mostly used in supergroup function
@@ -1016,8 +1018,8 @@ class Lattice:
             True or False
         """
         matrix = np.dot(trans.T, self.matrix)
-        l1 = Lattice.from_matrix(matrix)
-        l2 = Lattice.from_matrix(matrix, ltype=l_type)
+        l1 = Lattice.from_matrix(matrix, **kwargs)
+        l2 = Lattice.from_matrix(matrix, ltype=l_type, **kwargs)
         (a1, b1, c1, alpha1, beta1, gamma1) = l1.get_para(degree=True)
         (a2, b2, c2, alpha2, beta2, gamma2) = l2.get_para(degree=True)
         abc_diff = np.abs(np.array([a2 - a1, b2 - b1, c2 - c1])).max()
@@ -1165,10 +1167,7 @@ def generate_cellpara(
         a 6-length array representing the lattice of the unit cell. If
         generation fails, outputs a warning message and returns empty
     """
-    if isinstance(random_state, Generator):
-        random_state = random_state.spawn(1)[0]
-    else:
-        random_state = np.random.default_rng(random_state)
+    random_state = np.random.default_rng(random_state)
 
     min_special = kwargs.get("min_special", min_special)  # ; print("min_special", min_special)
     maxangle = np.pi - minangle
@@ -1336,10 +1335,7 @@ def generate_cellpara_2D(
         a 6-length representing the lattice vectors of the unit cell. If
         generation fails, outputs a warning message and returns empty
     """
-    if isinstance(random_state, int):
-        # NOTE if random_state is an integer make a Generator to ensure randomness
-        # downstream that would be lost if integer seed used repeated
-        random_state = np.random.default_rng(random_state)
+    random_state = np.random.default_rng(random_state)
 
     unique_axis = kwargs.get("unique_axis", "c")
     # Store the non-periodic axis
@@ -1542,10 +1538,7 @@ def generate_cellpara_1D(
         a 6-length array representing the lattice of the unit cell. If
         generation fails, outputs a warning message and returns empty
     """
-    if isinstance(random_state, int):
-        # NOTE if random_state is an integer make a Generator to ensure randomness
-        # downstream that would be lost if integer seed used repeated
-        random_state = np.random.default_rng(random_state)
+    random_state = np.random.default_rng(random_state)
 
     try:
         unique_axis = kwargs["unique_axis"]
@@ -1745,10 +1738,7 @@ def generate_cellpara_0D(
         a 3x3 matrix representing the lattice vectors of the unit cell. If
         generation fails, outputs a warning message and returns empty
     """
-    if isinstance(random_state, int):
-        # NOTE if random_state is an integer make a Generator to ensure randomness
-        # downstream that would be lost if integer seed used repeated
-        random_state = np.random.default_rng(random_state)
+    random_state = np.random.default_rng(random_state)
 
     if ltype == "spherical":
         # Use a cubic lattice with altered volume
@@ -1900,10 +1890,7 @@ def gaussian_random_variable(min, max, sigma=3.0, random_state: None | int | Gen
     Returns:
         a value chosen randomly between min and max
     """
-    if isinstance(random_state, Generator):
-        random_state = random_state.spawn(1)[0]
-    else:
-        random_state = np.random.default_rng(random_state)
+    random_state = np.random.default_rng(random_state)
 
     center = (max + min) * 0.5
     delta = np.fabs(max - min) * 0.5
@@ -1930,10 +1917,7 @@ def random_vector(minvec=None, maxvec=None, width=0.35, unit=False, random_state
     Returns:
         a 1x3 numpy array of floats
     """
-    if isinstance(random_state, Generator):
-        random_state = random_state.spawn(1)[0]
-    else:
-        random_state = np.random.default_rng(random_state)
+    random_state = np.random.default_rng(random_state)
 
     # TODO these were not used in the original code, moved out of the defaults
     # and declared if None to avoid having lists as default arguments.
@@ -1962,10 +1946,7 @@ def random_shear_matrix(width=1.0, unitary=False, random_state: None | int | Gen
     Returns:
         a 3x3 numpy array of floats
     """
-    if isinstance(random_state, Generator):
-        random_state = random_state.spawn(1)[0]
-    else:
-        random_state = np.random.default_rng(random_state)
+    random_state = np.random.default_rng(random_state)
 
     mat = np.zeros([3, 3])
     determinant = 0

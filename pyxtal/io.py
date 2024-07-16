@@ -242,7 +242,7 @@ def read_cif(filename):
 
 
 class structure_from_ext:
-    def __init__(self, struc, ref_mols, tol=0.2, ignore_HH=False, add_H=False, hn=None):
+    def __init__(self, struc, ref_mols, tol=0.2, ignore_HH=False, add_H=False, hn=None, random_state=None):
         """
         extract the mol_site information from the give cif file
         and reference molecule
@@ -254,6 +254,7 @@ class structure_from_ext:
             ignore_HH: whether or not ignore short H-H in checking molecule
             add_H: whether or not add the H atoms
         """
+        self.random_state = np.random.default_rng(random_state)
 
         for i, ref_mol in enumerate(ref_mols):
             if isinstance(ref_mol, str):
@@ -291,7 +292,7 @@ class structure_from_ext:
         self.pmg_struc = sym_struc
         matrix = sym_struc.lattice.matrix
         ltype = group.lattice_type
-        self.lattice = Lattice.from_matrix(matrix, ltype=ltype)
+        self.lattice = Lattice.from_matrix(matrix, ltype=ltype, random_state=self.random_state.spawn(1)[0])
         self.resort(molecules)
         if len(self.ids) == 0:
             raise RuntimeError("Cannot extract molecules")
@@ -441,7 +442,7 @@ class structure_from_ext:
         """
         generate the molecular wyckoff sites
         """
-        ori = Orientation(np.eye(3))
+        ori = Orientation(np.eye(3), random_state=self.random_state.spawn(1)[0])
         sites = []
         for id, mol, pos, wp in zip(self.ids, self.p_mols, self.positions, self.wps):
             # print(id, mol.smile, wp.multiplicity)
@@ -480,7 +481,7 @@ class structure_from_ext:
         coord2 -= np.mean(coord2, axis=0)
         coord3 = rot.dot(coord2.T).T + np.mean(self.ref_mol.cart_coords, axis=0)
         self.mol_aligned = Molecule(self.ref_mol.atomic_numbers, coord3)
-        self.ori = Orientation(rot)
+        self.ori = Orientation(rot, random_state=self.random_state.spawn(1)[0])
 
     def show(self, overlay=True):
         from pyxtal.viz import display_molecules

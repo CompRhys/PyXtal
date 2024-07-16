@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pymatgen.analysis.structure_matcher as sm
-from numpy.random import Generator
 from ost.parameters import ForceFieldParameters, compute_r2, get_lmp_efs
 
 from pyxtal.molecule import find_rotor_from_smile, pyxtal_molecule
@@ -84,10 +83,7 @@ class GlobalOptimize:
         random_state=None,
     ):
         # General information
-        if isinstance(random_state, Generator):
-            self.random_state = random_state.spawn(1)[0]
-        else:
-            self.random_state = np.random.default_rng(random_state)
+        self.random_state = np.random.default_rng(random_state)
 
         # Molecular information
         self.smile = smiles

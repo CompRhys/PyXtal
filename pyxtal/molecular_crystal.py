@@ -62,8 +62,8 @@ class molecular_crystal:
         sites=None,
         conventional=True,
         seed=None,
-        random_state=None,
         use_hall=False,
+        random_state=None,
     ):
         # Initialize
         self.source = "Random"
@@ -389,7 +389,7 @@ class molecular_crystal:
                 # Generate a list of coords from the wyckoff position
                 mult = wp.multiplicity  # remember the original multiplicity
 
-                pt = site[key] if type(site) is dict else self.lattice.generate_point()
+                pt = site[key] if isinstance(site, dict) else self.lattice.generate_point()
                 # merge coordinates if the atoms are close
                 mtol = pyxtal_mol.radius * 0.5
                 pt, wp, oris = wp.merge(pt, self.lattice.matrix, mtol, valid_ori, self.group)
